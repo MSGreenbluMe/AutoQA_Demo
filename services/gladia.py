@@ -5,10 +5,11 @@ This module handles audio transcription using Gladia.io API
 with speaker diarization and timestamps.
 """
 
-import os
 import time
 import requests
 from typing import Optional
+
+from utils.config import get_api_key
 
 
 class GladiaTranscriber:
@@ -20,11 +21,11 @@ class GladiaTranscriber:
         """Initialize the Gladia transcriber.
 
         Args:
-            api_key: Gladia API key. If not provided, reads from environment.
+            api_key: Gladia API key. If not provided, reads from config.
         """
-        self.api_key = api_key or os.getenv("GLADIA_API_KEY")
+        self.api_key = api_key or get_api_key("GLADIA_API_KEY")
         if not self.api_key:
-            raise ValueError("GLADIA_API_KEY not found in environment variables")
+            raise ValueError("GLADIA_API_KEY not found. Set it in .env or Streamlit secrets.")
 
         self.headers = {
             "x-gladia-key": self.api_key,

@@ -5,7 +5,6 @@ Main Streamlit application for automated call quality analysis.
 Developed by Coworkers.ai
 """
 
-import os
 import streamlit as st
 from dotenv import load_dotenv
 
@@ -20,6 +19,7 @@ from utils.audio_utils import (
     SUPPORTED_FORMATS,
     MAX_FILE_SIZE_MB,
 )
+from utils.config import has_api_keys
 from components.dashboard import (
     render_metric_card,
     render_gauge_chart,
@@ -34,7 +34,7 @@ from components.dashboard import (
     COLORS,
 )
 
-# Load environment variables
+# Load environment variables (for local development)
 load_dotenv()
 
 # Page configuration
@@ -443,7 +443,7 @@ def render_demo_mode():
     """Render demo mode with sample data."""
     st.info(
         "💡 **Demo mód:** Pre plnú funkcionalitu nastavte API kľúče "
-        "v súbore `.env` (GLADIA_API_KEY a GEMINI_API_KEY)"
+        "v `.env` súbore alebo Streamlit Secrets (GLADIA_API_KEY a GEMINI_API_KEY)"
     )
 
     # Sample transcript
@@ -597,11 +597,8 @@ def main():
     init_session_state()
     render_header()
 
-    # Check for API keys
-    gladia_key = os.getenv("GLADIA_API_KEY")
-    gemini_key = os.getenv("GEMINI_API_KEY")
-
-    if not gladia_key or not gemini_key:
+    # Check for API keys (supports both .env and Streamlit secrets)
+    if not has_api_keys():
         render_demo_mode()
     else:
         # File upload

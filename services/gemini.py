@@ -5,12 +5,12 @@ This module handles AI-powered call analysis using Google Gemini API
 to calculate quality metrics for call center conversations.
 """
 
-import os
 import json
-import re
 from typing import Optional
 
 import google.generativeai as genai
+
+from utils.config import get_api_key
 
 
 class GeminiAnalyzer:
@@ -20,11 +20,11 @@ class GeminiAnalyzer:
         """Initialize the Gemini analyzer.
 
         Args:
-            api_key: Gemini API key. If not provided, reads from environment.
+            api_key: Gemini API key. If not provided, reads from config.
         """
-        self.api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self.api_key = api_key or get_api_key("GEMINI_API_KEY")
         if not self.api_key:
-            raise ValueError("GEMINI_API_KEY not found in environment variables")
+            raise ValueError("GEMINI_API_KEY not found. Set it in .env or Streamlit secrets.")
 
         genai.configure(api_key=self.api_key)
         self.model = genai.GenerativeModel("gemini-2.0-flash-exp")

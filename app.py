@@ -380,11 +380,13 @@ def render_transcript_section(transcript: dict):
     </style>
     """, unsafe_allow_html=True)
 
+    import html
+
     # Build transcript HTML
     transcript_html = '<div class="transcript-container">'
     for segment in segments:
-        speaker = segment.get("speaker", "Unknown")
-        text = segment.get("text", "")
+        speaker = html.escape(str(segment.get("speaker", "Unknown")))
+        text = html.escape(str(segment.get("text", "")))
         timestamp = format_timestamp(segment.get("start", 0))
         speaker_id = segment.get("speaker_id", 0)
         is_agent = speaker_id == 0 or speaker == "Agent"
@@ -393,22 +395,7 @@ def render_transcript_section(transcript: dict):
         icon = "🎧" if is_agent else "👤"
         align = "flex-start" if is_agent else "flex-end"
 
-        transcript_html += f'''
-        <div style="display:flex;justify-content:{align};margin-bottom:0.75rem;">
-            <div style="background:linear-gradient(135deg,rgba(30,41,59,0.8),rgba(15,23,42,0.9));
-                        border:1px solid {color}30;border-left:4px solid {color};
-                        padding:0.75rem 1rem;border-radius:12px;max-width:85%;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
-                    <span style="font-weight:600;color:{color};font-size:0.85rem;">{icon} {speaker}</span>
-                    <span style="color:#94A3B8;font-size:0.7rem;margin-left:1rem;
-                                 background:rgba(148,163,184,0.1);padding:0.15rem 0.5rem;border-radius:10px;">
-                        {timestamp}
-                    </span>
-                </div>
-                <div style="color:#F8FAFC;font-size:0.9rem;line-height:1.5;">{text}</div>
-            </div>
-        </div>
-        '''
+        transcript_html += f'''<div style="display:flex;justify-content:{align};margin-bottom:0.75rem;"><div style="background:linear-gradient(135deg,rgba(30,41,59,0.8),rgba(15,23,42,0.9));border:1px solid {color}30;border-left:4px solid {color};padding:0.75rem 1rem;border-radius:12px;max-width:85%;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;"><span style="font-weight:600;color:{color};font-size:0.85rem;">{icon} {speaker}</span><span style="color:#94A3B8;font-size:0.7rem;margin-left:1rem;background:rgba(148,163,184,0.1);padding:0.15rem 0.5rem;border-radius:10px;">{timestamp}</span></div><div style="color:#F8FAFC;font-size:0.9rem;line-height:1.5;">{text}</div></div></div>'''
     transcript_html += '</div>'
 
     st.markdown(transcript_html, unsafe_allow_html=True)

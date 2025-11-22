@@ -6,6 +6,7 @@ to calculate quality metrics for call center conversations.
 """
 
 import json
+import re
 from typing import Optional
 
 import google.generativeai as genai
@@ -28,6 +29,7 @@ class GeminiAnalyzer:
         self.generation_config = {
             "temperature": 0.3,
             "max_output_tokens": 4096,
+            "response_mime_type": "application/json",  # Force valid JSON output
         }
 
     def analyze_call(self, transcript: dict) -> dict:
@@ -291,9 +293,10 @@ Prepis hovoru:
         return f"{minutes:02d}:{secs:02d}"
 
     def _parse_json_response(self, response_text: str) -> dict:
-        """Parse JSON from Gemini response."""
+        """Parse JSON from Gemini response with robust error handling."""
         text = response_text.strip()
 
+        # Remove markdown code blocks
         if text.startswith("```json"):
             text = text[7:]
         elif text.startswith("```"):
@@ -302,11 +305,89 @@ Prepis hovoru:
             text = text[:-3]
         text = text.strip()
 
+        # Find JSON boundaries
         start = text.find("{")
         end = text.rfind("}") + 1
 
-        if start != -1 and end > start:
-            json_str = text[start:end]
-            return json.loads(json_str)
+        if start == -1 or end <= start:
+            raise ValueError(f"No JSON object found in response: {response_text[:200]}")
 
-        raise ValueError(f"Could not parse JSON from response: {response_text[:200]}")
+        json_str = text[start:end]
+
+        # Try direct parsing first
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError:
+            pass
+
+        # Clean up common JSON issues
+        cleaned = json_str
+
+        # Remove trailing commas before } or ]
+        cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+
+        # Remove any control characters except newlines and tabs
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', cleaned)
+
+        # Try parsing cleaned JSON
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Last resort: try to extract individual fields manually
+        try:
+            result = self._extract_fields_manually(json_str)
+            if result:
+                return result
+        except Exception:
+            pass
+
+        raise ValueError(f"Could not parse JSON from response: {response_text[:300]}")
+
+    def _extract_fields_manually(self, json_str: str) -> dict:
+        """Extract fields manually if JSON parsing fails."""
+        result = {}
+
+        # Try to extract sentiment block
+        sentiment_match = re.search(
+            r'"sentiment"\s*:\s*(\{[^}]+\})',
+            json_str, re.DOTALL
+        )
+        if sentiment_match:
+            try:
+                # Clean and parse
+                block = sentiment_match.group(1)
+                block = re.sub(r',\s*\}', '}', block)
+                result["sentiment"] = json.loads(block)
+            except Exception:
+                pass
+
+        # Try to extract fcr block
+        fcr_match = re.search(
+            r'"fcr"\s*:\s*(\{[^}]+\})',
+            json_str, re.DOTALL
+        )
+        if fcr_match:
+            try:
+                block = fcr_match.group(1)
+                block = re.sub(r',\s*\}', '}', block)
+                result["fcr"] = json.loads(block)
+            except Exception:
+                pass
+
+        # Try to extract empathy_professionalism block (more complex with arrays)
+        ep_match = re.search(
+            r'"empathy_professionalism"\s*:\s*(\{.*?\})\s*\}',
+            json_str, re.DOTALL
+        )
+        if ep_match:
+            try:
+                block = ep_match.group(1) + "}"
+                block = re.sub(r',\s*\}', '}', block)
+                block = re.sub(r',\s*\]', ']', block)
+                result["empathy_professionalism"] = json.loads(block)
+            except Exception:
+                pass
+
+        return result if result else None

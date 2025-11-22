@@ -162,6 +162,8 @@ def init_session_state():
         st.session_state.processing_step = None
     if "error" not in st.session_state:
         st.session_state.error = None
+    if "file_info" not in st.session_state:
+        st.session_state.file_info = None
 
 
 def render_header():
@@ -213,11 +215,11 @@ def render_upload_section():
             st.error(f"❌ {error_msg}")
             return None, None
 
-        # Show file info
+        # Store and show file info
         file_info = get_file_info(uploaded_file)
+        st.session_state.file_info = file_info
         st.success(
-            f"✅ Súbor nahraný: **{file_info['name']}** "
-            f"({format_file_size(file_info['size_bytes'])})"
+            f"✅ Súbor: **{file_info['name']}** ({format_file_size(file_info['size_bytes'])})"
         )
 
         return uploaded_file, language
@@ -321,10 +323,8 @@ def render_transcript_section(transcript: dict):
     Args:
         transcript: Processed transcript dictionary.
     """
-    st.markdown("### 📝 Prepis hovoru")
-
-    # Transcript info
-    col1, col2, col3 = st.columns(3)
+    # Compact info row
+    col1, col2, col3, col4, col5 = st.columns([1, 1, 1, 1, 1])
 
     with col1:
         duration = transcript.get("duration", 0)
@@ -338,49 +338,80 @@ def render_transcript_section(transcript: dict):
         speakers = transcript.get("speaker_count", 2)
         st.metric("Účastníci", speakers)
 
-    st.markdown("---")
+    with col4:
+        # Export as text
+        full_text = transcript.get("full_text", "")
+        st.download_button(
+            label="📄 TXT",
+            data=full_text,
+            file_name="transcript.txt",
+            mime="text/plain",
+        )
 
-    # Chat-like transcript view
+    with col5:
+        # Export as JSON
+        import json
+        json_data = json.dumps(transcript, ensure_ascii=False, indent=2)
+        st.download_button(
+            label="📋 JSON",
+            data=json_data,
+            file_name="transcript.json",
+            mime="application/json",
+        )
+
+    # Chat-like transcript view in scrollable container
     segments = transcript.get("segments", [])
 
     if not segments:
         st.warning("Prepis neobsahuje žiadne segmenty.")
         return
 
-    # Scrollable container
-    with st.container():
-        for segment in segments:
-            render_transcript_message(
-                speaker=segment.get("speaker", "Unknown"),
-                text=segment.get("text", ""),
-                timestamp=format_timestamp(segment.get("start", 0)),
-                speaker_id=segment.get("speaker_id", 0),
-            )
+    # Scrollable container with fixed height
+    st.markdown("""
+    <style>
+    .transcript-container {
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 1rem;
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-    # Export options
-    st.markdown("---")
-    col1, col2 = st.columns(2)
+    # Build transcript HTML
+    transcript_html = '<div class="transcript-container">'
+    for segment in segments:
+        speaker = segment.get("speaker", "Unknown")
+        text = segment.get("text", "")
+        timestamp = format_timestamp(segment.get("start", 0))
+        speaker_id = segment.get("speaker_id", 0)
+        is_agent = speaker_id == 0 or speaker == "Agent"
 
-    with col1:
-        # Export as text
-        full_text = transcript.get("full_text", "")
-        st.download_button(
-            label="📄 Stiahnuť prepis (TXT)",
-            data=full_text,
-            file_name="transcript.txt",
-            mime="text/plain",
-        )
+        color = "#0EA5E9" if is_agent else "#10B981"
+        icon = "🎧" if is_agent else "👤"
+        align = "flex-start" if is_agent else "flex-end"
 
-    with col2:
-        # Export as JSON
-        import json
-        json_data = json.dumps(transcript, ensure_ascii=False, indent=2)
-        st.download_button(
-            label="📋 Stiahnuť prepis (JSON)",
-            data=json_data,
-            file_name="transcript.json",
-            mime="application/json",
-        )
+        transcript_html += f'''
+        <div style="display:flex;justify-content:{align};margin-bottom:0.75rem;">
+            <div style="background:linear-gradient(135deg,rgba(30,41,59,0.8),rgba(15,23,42,0.9));
+                        border:1px solid {color}30;border-left:4px solid {color};
+                        padding:0.75rem 1rem;border-radius:12px;max-width:85%;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+                    <span style="font-weight:600;color:{color};font-size:0.85rem;">{icon} {speaker}</span>
+                    <span style="color:#94A3B8;font-size:0.7rem;margin-left:1rem;
+                                 background:rgba(148,163,184,0.1);padding:0.15rem 0.5rem;border-radius:10px;">
+                        {timestamp}
+                    </span>
+                </div>
+                <div style="color:#F8FAFC;font-size:0.9rem;line-height:1.5;">{text}</div>
+            </div>
+        </div>
+        '''
+    transcript_html += '</div>'
+
+    st.markdown(transcript_html, unsafe_allow_html=True)
 
 
 def render_metrics_dashboard(metrics: dict):
@@ -683,29 +714,45 @@ def main():
     if not has_api_keys():
         render_demo_mode()
     else:
-        # File upload
-        uploaded_file, language = render_upload_section()
+        # If analysis complete, show results first
+        if st.session_state.transcript and st.session_state.metrics:
+            # Dashboard is PRIMARY - shown first
+            tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Prepis", "⚙️ Nová analýza"])
 
-        if uploaded_file:
-            if st.button("🚀 Spustiť analýzu", type="primary"):
-                st.session_state.transcript = None
-                st.session_state.metrics = None
-                process_audio(uploaded_file, language)
-
-    st.markdown("---")
-
-    # Display results if available
-    if st.session_state.transcript:
-        tab1, tab2 = st.tabs(["📝 Prepis", "📊 Dashboard"])
-
-        with tab1:
-            render_transcript_section(st.session_state.transcript)
-
-        with tab2:
-            if st.session_state.metrics:
+            with tab1:
                 render_metrics_dashboard(st.session_state.metrics)
-            else:
-                st.info("Čakám na dokončenie analýzy...")
+
+            with tab2:
+                render_transcript_section(st.session_state.transcript)
+
+            with tab3:
+                # File info from previous analysis (collapsible)
+                if st.session_state.file_info:
+                    with st.expander("ℹ️ Posledný analyzovaný súbor", expanded=False):
+                        fi = st.session_state.file_info
+                        st.markdown(f"**Názov:** {fi.get('name', 'N/A')}")
+                        st.markdown(f"**Veľkosť:** {format_file_size(fi.get('size_bytes', 0))}")
+                        st.markdown(f"**Formát:** {fi.get('extension', 'N/A')}")
+
+                st.markdown("### 📁 Nahrať nový súbor")
+                uploaded_file, language = render_upload_section()
+
+                if uploaded_file:
+                    if st.button("🚀 Spustiť novú analýzu", type="primary"):
+                        st.session_state.transcript = None
+                        st.session_state.metrics = None
+                        process_audio(uploaded_file, language)
+                        st.rerun()
+        else:
+            # No analysis yet - show upload section
+            uploaded_file, language = render_upload_section()
+
+            if uploaded_file:
+                if st.button("🚀 Spustiť analýzu", type="primary"):
+                    st.session_state.transcript = None
+                    st.session_state.metrics = None
+                    process_audio(uploaded_file, language)
+                    st.rerun()
 
     # Footer
     st.markdown("---")

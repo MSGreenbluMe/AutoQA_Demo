@@ -45,24 +45,108 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Custom CSS
+# Custom CSS for dark professional theme
 st.markdown("""
 <style>
+    /* Dark theme base */
+    .stApp {
+        background: linear-gradient(180deg, #0F172A 0%, #1E293B 100%);
+    }
     .main {
         padding-top: 1rem;
     }
     .stProgress > div > div > div > div {
-        background-color: #1E88E5;
+        background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
     }
     .block-container {
         padding-top: 2rem;
         padding-bottom: 2rem;
+        max-width: 1200px;
     }
     h1, h2, h3 {
-        color: #212121;
+        color: #F8FAFC !important;
+    }
+    h1 {
+        background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+    }
+    p, span, label {
+        color: #94A3B8;
     }
     .stAlert {
-        border-radius: 8px;
+        border-radius: 12px;
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background: transparent;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 12px;
+        color: #94A3B8;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+        padding: 0.75rem 1.5rem;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        color: white !important;
+    }
+    .stButton > button {
+        background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        padding: 0.75rem 2rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(14, 165, 233, 0.4);
+    }
+    .stFileUploader {
+        background: rgba(30, 41, 59, 0.6);
+        border-radius: 16px;
+        border: 2px dashed rgba(148, 163, 184, 0.2);
+        padding: 1rem;
+    }
+    .stFileUploader:hover {
+        border-color: #0EA5E9;
+    }
+    .stSelectbox > div > div {
+        background: rgba(30, 41, 59, 0.8);
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    .stMetric {
+        background: rgba(30, 41, 59, 0.6);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(148, 163, 184, 0.1);
+    }
+    .stMetric label {
+        color: #94A3B8 !important;
+    }
+    .stMetric [data-testid="stMetricValue"] {
+        color: #F8FAFC !important;
+    }
+    hr {
+        border-color: rgba(148, 163, 184, 0.1);
+    }
+    .stDownloadButton > button {
+        background: rgba(30, 41, 59, 0.8);
+        color: #F8FAFC;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 12px;
+    }
+    .stDownloadButton > button:hover {
+        background: rgba(14, 165, 233, 0.2);
+        border-color: #0EA5E9;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,16 +170,14 @@ def render_header():
 
     with col1:
         st.markdown("""
-        # 🎯 AutoQA - AI Quality Assurance
-        **Automatizované hodnotenie kvality hovorov** | Powered by Coworkers.ai
+        # 🐙 AutoQA - AI Quality Assurance
+        **Automatizované hodnotenie kvality hovorov** | Powered by Greenblu.me
         """)
 
     with col2:
         st.markdown("""
-        <div style="text-align: right; padding-top: 1rem;">
-            <img src="https://coworkers.ai/wp-content/uploads/2023/07/coworkers-ai-logo.svg"
-                 alt="Coworkers.ai"
-                 style="max-height: 40px; opacity: 0.8;">
+        <div style="text-align: right; padding-top: 0.5rem;">
+            <span style="font-size: 2.5rem;">🐙</span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -630,7 +712,7 @@ def main():
     st.markdown(
         """
         <div style="text-align: center; color: #888; font-size: 0.8rem;">
-            AutoQA POC v1.0 | Developed by Coworkers.ai | 2025
+            🐙 AutoQA v1.0 | Powered by Greenblu.me | 2025
         </div>
         """,
         unsafe_allow_html=True

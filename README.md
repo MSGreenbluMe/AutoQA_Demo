@@ -73,7 +73,7 @@ Click "Deploy" and wait for the app to build.
 
 - **Frontend:** Streamlit
 - **Transcription:** Gladia.io API
-- **AI Analysis:** Google Gemini API (gemini-2.0-flash-exp)
+- **AI Analysis:** Google Gemini API (gemini-2.5-pro)
 - **Visualization:** Plotly
 
 ## Project Structure
@@ -97,8 +97,8 @@ AutoQA_Demo/
 
 ## License
 
-Proprietary - Coworkers.ai
+Proprietary - Greenblu.me
 
 ---
 
-**Developed by Coworkers.ai** | 2025
+🐙 **Powered by Greenblu.me** | 2025

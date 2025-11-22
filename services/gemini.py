@@ -23,8 +23,8 @@ class GeminiAnalyzer:
             raise ValueError("GEMINI_API_KEY not found. Set it in .env or Streamlit secrets.")
 
         genai.configure(api_key=self.api_key)
-        # Using gemini-1.5-flash - best free tier limits
-        self.model = genai.GenerativeModel("gemini-1.5-flash")
+        # Gemini 2.5 Flash - 10 RPM free tier, best price-performance
+        self.model = genai.GenerativeModel("gemini-2.5-flash")
         self.generation_config = {
             "temperature": 0.3,
             "max_output_tokens": 4096,

@@ -479,26 +479,18 @@ def render_phrases_list(phrases: list, title: str, color: str):
     if not phrases:
         return
 
-    st.markdown(f"<p style='color: {COLORS['text_muted']}; font-size: 0.85rem; margin-bottom: 0.5rem; font-weight: 500;'>{title}:</p>", unsafe_allow_html=True)
+    st.markdown(f"**{title}:**")
 
-    chips_html = ""
+    # Use simple markdown for each phrase to avoid HTML escaping issues
     for phrase in phrases[:5]:
-        chips_html += f"""
-            <span style="
-                background: {color}15;
-                color: {color};
-                padding: 0.35rem 0.75rem;
-                border-radius: 20px;
-                font-size: 0.8rem;
-                display: inline-block;
-                margin: 0.2rem;
-                border: 1px solid {color}30;
-            ">
-                "{phrase}"
-            </span>
-        """
-
-    st.markdown(f"<div style='margin-bottom: 1rem;'>{chips_html}</div>", unsafe_allow_html=True)
+        # Escape any HTML in the phrase
+        safe_phrase = str(phrase).replace("<", "&lt;").replace(">", "&gt;")
+        st.markdown(
+            f'<span style="background:{color}20;color:{color};padding:0.3rem 0.7rem;'
+            f'border-radius:16px;font-size:0.8rem;display:inline-block;margin:0.15rem;'
+            f'border:1px solid {color}40;">"{safe_phrase}"</span>',
+            unsafe_allow_html=True
+        )
 
 
 def render_transcript_message(

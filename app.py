@@ -382,15 +382,24 @@ def render_transcript_section(transcript: dict):
     """, unsafe_allow_html=True)
 
     import html
+    import re
+
+    def sanitize_text(text: str) -> str:
+        """Remove control characters and escape HTML."""
+        # Remove control characters (except newlines and tabs)
+        cleaned = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', str(text))
+        # Escape HTML special characters
+        return html.escape(cleaned)
 
     # Build transcript HTML
     transcript_html = '<div class="transcript-container">'
     for segment in segments:
-        speaker = html.escape(str(segment.get("speaker", "Unknown")))
-        text = html.escape(str(segment.get("text", "")))
+        speaker_raw = segment.get("speaker", "Unknown")
+        speaker = sanitize_text(speaker_raw)
+        text = sanitize_text(segment.get("text", ""))
         timestamp = format_timestamp(segment.get("start", 0))
-        speaker_id = segment.get("speaker_id", 0)
-        is_agent = speaker_id == 0 or speaker == "Agent"
+        # Use speaker string to determine agent (not speaker_id)
+        is_agent = speaker_raw == "Agent"
 
         color = "#0EA5E9" if is_agent else "#10B981"
         icon = "🎧" if is_agent else "👤"
@@ -413,17 +422,6 @@ def render_metrics_dashboard(metrics: dict, transcript: dict = None):
 
     # Overall score at the top
     render_overall_score_card(metrics.get("overall_score", {}))
-
-    # Call Timeline - interactive visualization
-    if transcript:
-        st.markdown("---")
-        segments = transcript.get("segments", [])
-        duration = transcript.get("duration", 0)
-        st.plotly_chart(
-            render_call_timeline(segments, duration),
-            use_container_width=True,
-            key="call_timeline"
-        )
 
     st.markdown("---")
 
@@ -533,6 +531,17 @@ def render_metrics_dashboard(metrics: dict, transcript: dict = None):
             empathy_prof.get("professionalism_phrases", []),
             "Profesionálne frázy",
             COLORS["primary"]
+        )
+
+    # Call Timeline - interactive visualization (below component scores)
+    if transcript:
+        st.markdown("---")
+        segments = transcript.get("segments", [])
+        duration = transcript.get("duration", 0)
+        st.plotly_chart(
+            render_call_timeline(segments, duration),
+            use_container_width=True,
+            key="call_timeline"
         )
 
     st.markdown("---")

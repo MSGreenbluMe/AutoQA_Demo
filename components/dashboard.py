@@ -640,8 +640,8 @@ def render_call_timeline(segments: List[Dict[str, Any]], duration: float) -> go.
         # Truncate text for hover (max 100 chars)
         hover_text = text[:100] + "..." if len(text) > 100 else text
 
-        # Determine if agent or customer
-        is_agent = speaker_id == 0 or speaker == "Agent"
+        # Determine if agent or customer (use speaker string, not ID)
+        is_agent = speaker == "Agent"
 
         segment_data = {
             "start": start,

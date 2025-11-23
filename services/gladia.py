@@ -205,8 +205,9 @@ class GladiaTranscriber:
         segments = []
         for utterance in utterances:
             speaker_id = utterance.get("speaker", 0)
-            # Map speaker ID to role (0 = Agent, 1 = Customer by convention)
-            speaker_role = "Agent" if speaker_id == 0 else "Zákazník"
+            # In typical calls, speaker 0 is often the customer (first to speak)
+            # and speaker 1 is the agent - swap the convention
+            speaker_role = "Zákazník" if speaker_id == 0 else "Agent"
 
             segment = {
                 "speaker": speaker_role,

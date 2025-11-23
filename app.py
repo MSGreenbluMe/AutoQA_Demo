@@ -31,6 +31,7 @@ from components.dashboard import (
     render_component_scores,
     render_phrases_list,
     render_transcript_message,
+    render_call_timeline,
     COLORS,
 )
 
@@ -401,16 +402,28 @@ def render_transcript_section(transcript: dict):
     st.markdown(transcript_html, unsafe_allow_html=True)
 
 
-def render_metrics_dashboard(metrics: dict):
+def render_metrics_dashboard(metrics: dict, transcript: dict = None):
     """Render metrics dashboard.
 
     Args:
         metrics: Calculated metrics dictionary.
+        transcript: Optional transcript dictionary for timeline.
     """
     st.markdown("### 📊 Dashboard kvality hovoru")
 
     # Overall score at the top
     render_overall_score_card(metrics.get("overall_score", {}))
+
+    # Call Timeline - interactive visualization
+    if transcript:
+        st.markdown("---")
+        segments = transcript.get("segments", [])
+        duration = transcript.get("duration", 0)
+        st.plotly_chart(
+            render_call_timeline(segments, duration),
+            use_container_width=True,
+            key="call_timeline"
+        )
 
     st.markdown("---")
 
@@ -707,7 +720,7 @@ def main():
             tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "📝 Prepis", "⚙️ Nová analýza"])
 
             with tab1:
-                render_metrics_dashboard(st.session_state.metrics)
+                render_metrics_dashboard(st.session_state.metrics, st.session_state.transcript)
 
             with tab2:
                 render_transcript_section(st.session_state.transcript)

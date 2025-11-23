@@ -6,8 +6,9 @@ Modern glassmorphism design with gradient accents.
 """
 
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 import streamlit as st
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 # Professional color palette - Greenblu.me theme
@@ -578,3 +579,254 @@ def render_stats_row(stats: list):
                 """,
                 unsafe_allow_html=True
             )
+
+
+def render_call_timeline(segments: List[Dict[str, Any]], duration: float) -> go.Figure:
+    """
+    Create an interactive call timeline visualization.
+
+    Shows:
+    - Speaker segments as colored bars (agent/customer)
+    - Speech rate (WPM) curves for both speakers
+    - Hover tooltips with segment text
+    """
+    if not segments or duration <= 0:
+        # Return empty figure if no data
+        fig = go.Figure()
+        fig.update_layout(
+            title="Call Timeline",
+            annotations=[dict(
+                text="Žiadne dáta pre zobrazenie",
+                xref="paper", yref="paper",
+                x=0.5, y=0.5, showarrow=False,
+                font=dict(size=16, color=COLORS["text_muted"])
+            )],
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        return fig
+
+    # Create figure with secondary y-axis
+    fig = make_subplots(
+        rows=2, cols=1,
+        row_heights=[0.6, 0.4],
+        vertical_spacing=0.12,
+        subplot_titles=("", "Rýchlosť reči (slov/min)"),
+        specs=[[{"secondary_y": False}], [{"secondary_y": False}]]
+    )
+
+    # Prepare data for timeline bars
+    agent_segments = []
+    customer_segments = []
+
+    # Prepare data for WPM curves
+    agent_wpm_times = []
+    agent_wpm_values = []
+    customer_wpm_times = []
+    customer_wpm_values = []
+
+    for seg in segments:
+        start = seg.get("start", 0)
+        end = seg.get("end", start + 1)
+        text = seg.get("text", "")
+        speaker = seg.get("speaker", "Unknown")
+        speaker_id = seg.get("speaker_id", 0)
+
+        # Calculate WPM for this segment
+        seg_duration = end - start
+        word_count = len(text.split())
+        wpm = (word_count / (seg_duration / 60)) if seg_duration > 0 else 0
+
+        # Truncate text for hover (max 100 chars)
+        hover_text = text[:100] + "..." if len(text) > 100 else text
+
+        # Determine if agent or customer
+        is_agent = speaker_id == 0 or speaker == "Agent"
+
+        segment_data = {
+            "start": start,
+            "end": end,
+            "text": hover_text,
+            "wpm": round(wpm, 1),
+            "speaker": speaker,
+            "word_count": word_count,
+        }
+
+        if is_agent:
+            agent_segments.append(segment_data)
+            # Add WPM data point at segment midpoint
+            mid_time = (start + end) / 2
+            agent_wpm_times.append(mid_time)
+            agent_wpm_values.append(wpm)
+        else:
+            customer_segments.append(segment_data)
+            mid_time = (start + end) / 2
+            customer_wpm_times.append(mid_time)
+            customer_wpm_values.append(wpm)
+
+    # Add agent segments as bars (row 1)
+    for seg in agent_segments:
+        fig.add_trace(
+            go.Bar(
+                x=[seg["end"] - seg["start"]],
+                y=["Agent"],
+                base=[seg["start"]],
+                orientation="h",
+                marker=dict(
+                    color=COLORS["agent"],
+                    line=dict(width=1, color=COLORS["agent"]),
+                    opacity=0.85,
+                ),
+                hovertemplate=(
+                    f"<b>🎧 {seg['speaker']}</b><br>"
+                    f"<b>Čas:</b> {_format_time(seg['start'])} - {_format_time(seg['end'])}<br>"
+                    f"<b>Slov:</b> {seg['word_count']} ({seg['wpm']} slov/min)<br>"
+                    f"<b>Text:</b> {seg['text']}<extra></extra>"
+                ),
+                showlegend=False,
+            ),
+            row=1, col=1
+        )
+
+    # Add customer segments as bars (row 1)
+    for seg in customer_segments:
+        fig.add_trace(
+            go.Bar(
+                x=[seg["end"] - seg["start"]],
+                y=["Zákazník"],
+                base=[seg["start"]],
+                orientation="h",
+                marker=dict(
+                    color=COLORS["customer"],
+                    line=dict(width=1, color=COLORS["customer"]),
+                    opacity=0.85,
+                ),
+                hovertemplate=(
+                    f"<b>👤 {seg['speaker']}</b><br>"
+                    f"<b>Čas:</b> {_format_time(seg['start'])} - {_format_time(seg['end'])}<br>"
+                    f"<b>Slov:</b> {seg['word_count']} ({seg['wpm']} slov/min)<br>"
+                    f"<b>Text:</b> {seg['text']}<extra></extra>"
+                ),
+                showlegend=False,
+            ),
+            row=1, col=1
+        )
+
+    # Add WPM line for agent (row 2)
+    if agent_wpm_times:
+        # Sort by time
+        agent_data = sorted(zip(agent_wpm_times, agent_wpm_values))
+        times, values = zip(*agent_data) if agent_data else ([], [])
+
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=values,
+                mode="lines+markers",
+                name="Agent",
+                line=dict(color=COLORS["agent"], width=3, shape="spline"),
+                marker=dict(size=8, color=COLORS["agent"], symbol="circle"),
+                hovertemplate="<b>Agent</b><br>Čas: %{x:.1f}s<br>WPM: %{y:.0f}<extra></extra>",
+                fill="tozeroy",
+                fillcolor=f"rgba(14, 165, 233, 0.15)",
+            ),
+            row=2, col=1
+        )
+
+    # Add WPM line for customer (row 2)
+    if customer_wpm_times:
+        # Sort by time
+        customer_data = sorted(zip(customer_wpm_times, customer_wpm_values))
+        times, values = zip(*customer_data) if customer_data else ([], [])
+
+        fig.add_trace(
+            go.Scatter(
+                x=times,
+                y=values,
+                mode="lines+markers",
+                name="Zákazník",
+                line=dict(color=COLORS["customer"], width=3, shape="spline"),
+                marker=dict(size=8, color=COLORS["customer"], symbol="diamond"),
+                hovertemplate="<b>Zákazník</b><br>Čas: %{x:.1f}s<br>WPM: %{y:.0f}<extra></extra>",
+                fill="tozeroy",
+                fillcolor=f"rgba(16, 185, 129, 0.15)",
+            ),
+            row=2, col=1
+        )
+
+    # Update layout
+    fig.update_layout(
+        title=dict(
+            text="📊 Call Timeline",
+            font=dict(size=18, color=COLORS["text"]),
+            x=0.5,
+            xanchor="center",
+        ),
+        height=400,
+        margin=dict(l=80, r=40, t=60, b=60),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        barmode="overlay",
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="center",
+            x=0.5,
+            font=dict(color=COLORS["text_muted"], size=12),
+            bgcolor="rgba(0,0,0,0)",
+        ),
+        hovermode="closest",
+    )
+
+    # Update axes for timeline (row 1)
+    fig.update_xaxes(
+        title_text="",
+        range=[0, duration],
+        tickfont=dict(color=COLORS["text_muted"]),
+        gridcolor="rgba(148, 163, 184, 0.1)",
+        zeroline=False,
+        tickformat=".0f",
+        ticksuffix="s",
+        row=1, col=1
+    )
+    fig.update_yaxes(
+        title_text="",
+        tickfont=dict(color=COLORS["text_muted"], size=12),
+        gridcolor="rgba(148, 163, 184, 0.1)",
+        zeroline=False,
+        row=1, col=1
+    )
+
+    # Update axes for WPM chart (row 2)
+    fig.update_xaxes(
+        title_text="Čas (sekundy)",
+        title_font=dict(color=COLORS["text_muted"], size=11),
+        range=[0, duration],
+        tickfont=dict(color=COLORS["text_muted"]),
+        gridcolor="rgba(148, 163, 184, 0.1)",
+        zeroline=False,
+        tickformat=".0f",
+        ticksuffix="s",
+        row=2, col=1
+    )
+    fig.update_yaxes(
+        title_text="WPM",
+        title_font=dict(color=COLORS["text_muted"], size=11),
+        tickfont=dict(color=COLORS["text_muted"]),
+        gridcolor="rgba(148, 163, 184, 0.1)",
+        zeroline=False,
+        row=2, col=1
+    )
+
+    # Style subtitle
+    fig.update_annotations(font=dict(color=COLORS["text_muted"], size=12))
+
+    return fig
+
+
+def _format_time(seconds: float) -> str:
+    """Format seconds to MM:SS format."""
+    minutes = int(seconds // 60)
+    secs = int(seconds % 60)
+    return f"{minutes:02d}:{secs:02d}"

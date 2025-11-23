@@ -581,7 +581,7 @@ def render_stats_row(stats: list):
             )
 
 
-def render_call_timeline(segments: List[Dict[str, Any]], duration: float) -> go.Figure:
+def render_call_timeline(segments: List[Dict[str, Any]], duration: float, swap_speakers: bool = False) -> go.Figure:
     """
     Create an interactive call timeline visualization.
 
@@ -589,6 +589,11 @@ def render_call_timeline(segments: List[Dict[str, Any]], duration: float) -> go.
     - Speaker segments as colored bars (agent/customer)
     - Speech rate (WPM) curves for both speakers
     - Hover tooltips with segment text
+
+    Args:
+        segments: List of transcript segments
+        duration: Total call duration in seconds
+        swap_speakers: If True, swap agent/customer roles
     """
     if not segments or duration <= 0:
         # Return empty figure if no data
@@ -641,14 +646,18 @@ def render_call_timeline(segments: List[Dict[str, Any]], duration: float) -> go.
         hover_text = text[:100] + "..." if len(text) > 100 else text
 
         # Determine if agent or customer (use speaker string, not ID)
-        is_agent = speaker == "Agent"
+        is_agent_original = speaker == "Agent"
+        is_agent = not is_agent_original if swap_speakers else is_agent_original
+
+        # Display name after potential swap
+        display_speaker = "Agent" if is_agent else "Zákazník"
 
         segment_data = {
             "start": start,
             "end": end,
             "text": hover_text,
             "wpm": round(wpm, 1),
-            "speaker": speaker,
+            "speaker": display_speaker,
             "word_count": word_count,
         }
 

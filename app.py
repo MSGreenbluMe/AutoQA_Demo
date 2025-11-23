@@ -169,6 +169,8 @@ def init_session_state():
         st.session_state.audio_data = None
     if "audio_format" not in st.session_state:
         st.session_state.audio_format = None
+    if "swap_speakers" not in st.session_state:
+        st.session_state.swap_speakers = False
 
 
 def render_header():
@@ -364,11 +366,23 @@ def render_transcript_section(transcript: dict):
             mime="application/json",
         )
 
-    # Audio player
-    if st.session_state.audio_data:
-        st.markdown("#### 🎧 Prehrať nahrávku")
-        audio_format = st.session_state.audio_format or "audio/wav"
-        st.audio(st.session_state.audio_data, format=audio_format)
+    # Audio player and speaker swap option
+    col_audio, col_swap = st.columns([3, 1])
+
+    with col_audio:
+        if st.session_state.audio_data:
+            st.markdown("#### 🎧 Prehrať nahrávku")
+            audio_format = st.session_state.audio_format or "audio/wav"
+            st.audio(st.session_state.audio_data, format=audio_format)
+
+    with col_swap:
+        st.markdown("#### 🔄 Role")
+        swap_label = "Agent ↔ Zákazník" if not st.session_state.swap_speakers else "Zákazník ↔ Agent"
+        if st.button(f"🔄 Prehodiť", help="Prehodiť role Agenta a Zákazníka"):
+            st.session_state.swap_speakers = not st.session_state.swap_speakers
+            st.rerun()
+        if st.session_state.swap_speakers:
+            st.caption("⚠️ Role prehodené")
 
     st.markdown("---")
 
@@ -404,14 +418,20 @@ def render_transcript_section(transcript: dict):
         return html.escape(cleaned)
 
     # Build transcript HTML
+    swap = st.session_state.swap_speakers
     transcript_html = '<div class="transcript-container">'
     for segment in segments:
         speaker_raw = segment.get("speaker", "Unknown")
-        speaker = sanitize_text(speaker_raw)
         text = sanitize_text(segment.get("text", ""))
         timestamp = format_timestamp(segment.get("start", 0))
-        # Use speaker string to determine agent (not speaker_id)
-        is_agent = speaker_raw == "Agent"
+
+        # Determine role with swap support
+        is_agent_original = speaker_raw == "Agent"
+        is_agent = not is_agent_original if swap else is_agent_original
+
+        # Display name based on actual role (after swap)
+        display_speaker = "Agent" if is_agent else "Zákazník"
+        speaker = sanitize_text(display_speaker)
 
         color = "#0EA5E9" if is_agent else "#10B981"
         icon = "🎧" if is_agent else "👤"
@@ -551,7 +571,7 @@ def render_metrics_dashboard(metrics: dict, transcript: dict = None):
         segments = transcript.get("segments", [])
         duration = transcript.get("duration", 0)
         st.plotly_chart(
-            render_call_timeline(segments, duration),
+            render_call_timeline(segments, duration, st.session_state.swap_speakers),
             use_container_width=True,
             key="call_timeline"
         )
@@ -762,9 +782,12 @@ def main():
                     if st.button("🚀 Spustiť novú analýzu", type="primary"):
                         st.session_state.transcript = None
                         st.session_state.metrics = None
+                        st.session_state.swap_speakers = False  # Reset swap
                         # Store audio for playback with correct format
                         st.session_state.audio_data = uploaded_file.getvalue()
                         st.session_state.audio_format = uploaded_file.type or "audio/wav"
+                        # Reset file pointer for processing
+                        uploaded_file.seek(0)
                         process_audio(uploaded_file, language)
                         st.rerun()
         else:
@@ -775,9 +798,12 @@ def main():
                 if st.button("🚀 Spustiť analýzu", type="primary"):
                     st.session_state.transcript = None
                     st.session_state.metrics = None
+                    st.session_state.swap_speakers = False  # Reset swap
                     # Store audio for playback with correct format
                     st.session_state.audio_data = uploaded_file.getvalue()
                     st.session_state.audio_format = uploaded_file.type or "audio/wav"
+                    # Reset file pointer for processing
+                    uploaded_file.seek(0)
                     process_audio(uploaded_file, language)
                     st.rerun()
 

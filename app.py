@@ -165,6 +165,8 @@ def init_session_state():
         st.session_state.error = None
     if "file_info" not in st.session_state:
         st.session_state.file_info = None
+    if "audio_data" not in st.session_state:
+        st.session_state.audio_data = None
 
 
 def render_header():
@@ -359,6 +361,13 @@ def render_transcript_section(transcript: dict):
             file_name="transcript.json",
             mime="application/json",
         )
+
+    # Audio player
+    if st.session_state.audio_data:
+        st.markdown("#### 🎧 Prehrať nahrávku")
+        st.audio(st.session_state.audio_data, format="audio/wav")
+
+    st.markdown("---")
 
     # Chat-like transcript view in scrollable container
     segments = transcript.get("segments", [])
@@ -750,6 +759,8 @@ def main():
                     if st.button("🚀 Spustiť novú analýzu", type="primary"):
                         st.session_state.transcript = None
                         st.session_state.metrics = None
+                        # Store audio for playback
+                        st.session_state.audio_data = uploaded_file.getvalue()
                         process_audio(uploaded_file, language)
                         st.rerun()
         else:
@@ -760,6 +771,8 @@ def main():
                 if st.button("🚀 Spustiť analýzu", type="primary"):
                     st.session_state.transcript = None
                     st.session_state.metrics = None
+                    # Store audio for playback
+                    st.session_state.audio_data = uploaded_file.getvalue()
                     process_audio(uploaded_file, language)
                     st.rerun()
 

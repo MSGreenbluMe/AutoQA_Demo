@@ -372,8 +372,18 @@ def render_transcript_section(transcript: dict):
     with col_audio:
         if st.session_state.audio_data:
             st.markdown("#### 🎧 Prehrať nahrávku")
-            # Let Streamlit auto-detect format
-            st.audio(st.session_state.audio_data)
+            # Use HTML5 audio with base64 for better compatibility
+            import base64
+            audio_b64 = base64.b64encode(st.session_state.audio_data).decode()
+            # Detect format from file extension stored in session
+            audio_mime = st.session_state.get("audio_format", "audio/mpeg")
+            audio_html = f'''
+            <audio controls style="width: 100%; border-radius: 8px;">
+                <source src="data:{audio_mime};base64,{audio_b64}" type="{audio_mime}">
+                Váš prehliadač nepodporuje audio prehrávač.
+            </audio>
+            '''
+            st.markdown(audio_html, unsafe_allow_html=True)
 
     with col_swap:
         st.markdown("#### 🔄 Role")
@@ -786,6 +796,7 @@ def main():
                         # Store audio for playback - read bytes first
                         uploaded_file.seek(0)
                         st.session_state.audio_data = uploaded_file.read()
+                        st.session_state.audio_format = uploaded_file.type or "audio/mpeg"
                         # Reset file pointer for processing
                         uploaded_file.seek(0)
                         process_audio(uploaded_file, language)
@@ -802,6 +813,7 @@ def main():
                     # Store audio for playback - read bytes first
                     uploaded_file.seek(0)
                     st.session_state.audio_data = uploaded_file.read()
+                    st.session_state.audio_format = uploaded_file.type or "audio/mpeg"
                     # Reset file pointer for processing
                     uploaded_file.seek(0)
                     process_audio(uploaded_file, language)

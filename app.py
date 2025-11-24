@@ -372,8 +372,8 @@ def render_transcript_section(transcript: dict):
     with col_audio:
         if st.session_state.audio_data:
             st.markdown("#### 🎧 Prehrať nahrávku")
-            audio_format = st.session_state.audio_format or "audio/wav"
-            st.audio(st.session_state.audio_data, format=audio_format)
+            # Let Streamlit auto-detect format
+            st.audio(st.session_state.audio_data)
 
     with col_swap:
         st.markdown("#### 🔄 Role")
@@ -783,9 +783,9 @@ def main():
                         st.session_state.transcript = None
                         st.session_state.metrics = None
                         st.session_state.swap_speakers = False  # Reset swap
-                        # Store audio for playback with correct format
-                        st.session_state.audio_data = uploaded_file.getvalue()
-                        st.session_state.audio_format = uploaded_file.type or "audio/wav"
+                        # Store audio for playback - read bytes first
+                        uploaded_file.seek(0)
+                        st.session_state.audio_data = uploaded_file.read()
                         # Reset file pointer for processing
                         uploaded_file.seek(0)
                         process_audio(uploaded_file, language)
@@ -799,9 +799,9 @@ def main():
                     st.session_state.transcript = None
                     st.session_state.metrics = None
                     st.session_state.swap_speakers = False  # Reset swap
-                    # Store audio for playback with correct format
-                    st.session_state.audio_data = uploaded_file.getvalue()
-                    st.session_state.audio_format = uploaded_file.type or "audio/wav"
+                    # Store audio for playback - read bytes first
+                    uploaded_file.seek(0)
+                    st.session_state.audio_data = uploaded_file.read()
                     # Reset file pointer for processing
                     uploaded_file.seek(0)
                     process_audio(uploaded_file, language)

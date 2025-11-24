@@ -225,6 +225,17 @@ def render_upload_section():
         # Store and show file info
         file_info = get_file_info(uploaded_file)
         st.session_state.file_info = file_info
+
+        # Store audio bytes immediately for playback
+        # This ensures we capture the data before any rerun
+        uploaded_file.seek(0)
+        audio_bytes = uploaded_file.read()
+        uploaded_file.seek(0)  # Reset for later use
+
+        if audio_bytes and len(audio_bytes) > 0:
+            st.session_state.audio_data = audio_bytes
+            st.session_state.audio_format = uploaded_file.type or "audio/wav"
+
         st.success(
             f"✅ Súbor: **{file_info['name']}** ({format_file_size(file_info['size_bytes'])})"
         )
@@ -793,12 +804,7 @@ def main():
                         st.session_state.transcript = None
                         st.session_state.metrics = None
                         st.session_state.swap_speakers = False  # Reset swap
-                        # Store audio for playback - read bytes first
-                        uploaded_file.seek(0)
-                        st.session_state.audio_data = uploaded_file.read()
-                        st.session_state.audio_format = uploaded_file.type or "audio/mpeg"
-                        # Reset file pointer for processing
-                        uploaded_file.seek(0)
+                        # Audio is already stored in render_upload_section
                         process_audio(uploaded_file, language)
                         st.rerun()
         else:
@@ -810,12 +816,7 @@ def main():
                     st.session_state.transcript = None
                     st.session_state.metrics = None
                     st.session_state.swap_speakers = False  # Reset swap
-                    # Store audio for playback - read bytes first
-                    uploaded_file.seek(0)
-                    st.session_state.audio_data = uploaded_file.read()
-                    st.session_state.audio_format = uploaded_file.type or "audio/mpeg"
-                    # Reset file pointer for processing
-                    uploaded_file.seek(0)
+                    # Audio is already stored in render_upload_section
                     process_audio(uploaded_file, language)
                     st.rerun()
 

@@ -647,11 +647,18 @@ def render_advanced_analytics(transcript: dict, metrics: dict):
     """
     st.markdown("### 🚀 Pokročilá analýza (ERFC, SSR, CCM)")
 
-    # Initialize analyzers
-    from services.gemini import init_gemini
-
+    # Initialize Gemini model (reuse existing GeminiAnalyzer)
     try:
-        gemini_model = init_gemini()
+        import google.generativeai as genai
+        from utils.config import get_api_key
+
+        api_key = get_api_key("GEMINI_API_KEY")
+        if not api_key:
+            st.error("❌ GEMINI_API_KEY nie je nastavený")
+            return
+
+        genai.configure(api_key=api_key)
+        gemini_model = genai.GenerativeModel("gemini-2.5-flash")
     except Exception as e:
         st.error(f"❌ Chyba inicializácie Gemini: {e}")
         return

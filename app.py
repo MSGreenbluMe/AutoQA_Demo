@@ -35,6 +35,18 @@ from components.dashboard import (
     COLORS,
 )
 
+# Advanced Analytics imports
+from services.erfc import ERFCAnalyzer
+from services.ssr import SSRAnalyzer
+from services.ccm import CCMAnalyzer, analyze_ssr_with_ccm
+from components.advanced_viz import (
+    create_emotion_timeline,
+    create_trajectory_gauge,
+    create_distribution_bars,
+    create_confidence_table,
+    create_overall_confidence_indicator,
+)
+
 # Load environment variables (for local development)
 load_dotenv()
 
@@ -606,12 +618,195 @@ def render_metrics_dashboard(metrics: dict, transcript: dict = None):
         for suggestion in suggestions:
             st.markdown(f"- {suggestion}")
 
+    # Advanced Analytics expander
+    with st.expander("🚀 Spustiť pokročilú analýzu (ERFC, SSR, CCM)", expanded=False):
+        st.markdown("""
+        Pokročilé analytické metódy založené na vedeckých publikáciách:
+        - **ERFC**: Emócie a predikcia trajektórie
+        - **SSR**: Distribúcie pravdepodobnosti (nie pevné skóre)
+        - **CCM**: Istota a potreba ľudskej kontroly
+        """)
+
+        if st.button("▶️ Analyzovať", key="advanced_analytics_btn"):
+            render_advanced_analytics(transcript, metrics)
+
     # Duration info
     duration_info = metrics.get("duration", {})
     st.markdown("---")
     st.markdown(
         f"**Celková dĺžka hovoru:** {duration_info.get('formatted', 'N/A')}"
     )
+
+
+def render_advanced_analytics(transcript: dict, metrics: dict):
+    """Render advanced analytics (ERFC, SSR, CCM).
+
+    Args:
+        transcript: Processed transcript dictionary.
+        metrics: Basic metrics dictionary.
+    """
+    st.markdown("### 🚀 Pokročilá analýza (ERFC, SSR, CCM)")
+
+    # Initialize analyzers
+    from services.gemini import init_gemini
+
+    try:
+        gemini_model = init_gemini()
+    except Exception as e:
+        st.error(f"❌ Chyba inicializácie Gemini: {e}")
+        return
+
+    segments = transcript.get("segments", [])
+    if not segments:
+        st.warning("Nedostatok dát pre pokročilú analýzu.")
+        return
+
+    # Progress indicator
+    progress_bar = st.progress(0)
+    status = st.empty()
+
+    # 1. ERFC Analysis
+    status.markdown("🎭 Analyzujem emócie a trajektóriu...")
+    progress_bar.progress(20)
+
+    erfc = ERFCAnalyzer(gemini_model)
+    erfc_result = erfc.analyze(segments, swap_speakers=st.session_state.swap_speakers)
+
+    progress_bar.progress(50)
+
+    # 2. SSR Analysis
+    status.markdown("📊 Vykonávam SSR analýzu (distribúcie)...")
+
+    try:
+        from sentence_transformers import SentenceTransformer
+        embedder = SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')
+    except ImportError:
+        st.info("💡 Pre lepšie výsledky nainštalujte: pip install sentence-transformers")
+        embedder = None
+
+    ssr = SSRAnalyzer(gemini_model, embedding_model=embedder)
+    full_text = transcript.get("full_text", "")
+    ssr_results = ssr.analyze_all(full_text)
+
+    progress_bar.progress(75)
+
+    # 3. CCM Analysis
+    status.markdown("🎯 Analyzujem istotu pomocou CCM...")
+
+    ccm = CCMAnalyzer(coverage_level=0.90)
+    ccm_results = analyze_ssr_with_ccm(ssr_results, ccm)
+
+    progress_bar.progress(100)
+    status.markdown("✅ Pokročilá analýza dokončená!")
+
+    st.markdown("---")
+
+    # Visualizations
+    col1, col2 = st.columns([2, 1])
+
+    with col1:
+        # ERFC: Emotion timeline
+        fig_timeline = create_emotion_timeline(erfc_result)
+        st.plotly_chart(fig_timeline, use_container_width=True, key="erfc_timeline")
+
+    with col2:
+        # ERFC: Agent consistency gauge
+        fig_gauge = create_trajectory_gauge(
+            erfc_result.agent_consistency,
+            erfc_result.customer_trajectory
+        )
+        st.plotly_chart(fig_gauge, use_container_width=True, key="erfc_gauge")
+
+        # Trajectory info
+        traj_emoji = {
+            "improving": "📈",
+            "declining": "📉",
+            "stable": "➡️",
+            "volatile": "📊"
+        }
+        traj_label = {
+            "improving": "Zlepšuje sa",
+            "declining": "Zhoršuje sa",
+            "stable": "Stabilná",
+            "volatile": "Volatilná"
+        }
+        st.markdown(f"""
+        **Trajektória zákazníka:**
+        {traj_emoji.get(erfc_result.customer_trajectory, '➡️')} {traj_label.get(erfc_result.customer_trajectory, erfc_result.customer_trajectory)}
+        """)
+
+    st.markdown("---")
+
+    # SSR: Distributions
+    col1, col2 = st.columns([3, 2])
+
+    with col1:
+        fig_dist = create_distribution_bars(ssr_results)
+        st.plotly_chart(fig_dist, use_container_width=True, key="ssr_distributions")
+
+    with col2:
+        st.markdown("#### 📝 SSR Vysvetlenia")
+        for dimension, result in ssr_results.items():
+            dim_labels = {
+                "empathy": "Empatia",
+                "professionalism": "Profesionalita",
+                "fcr_likelihood": "FCR"
+            }
+            st.markdown(f"**{dim_labels.get(dimension, dimension)}:**")
+            st.caption(result.text_response[:150] + "...")
+            st.markdown("")
+
+    st.markdown("---")
+
+    # CCM: Confidence table
+    fig_ccm = create_confidence_table(ccm_results)
+    st.plotly_chart(fig_ccm, use_container_width=True, key="ccm_table")
+
+    # Overall confidence
+    overall_conf_pct, needs_review = create_overall_confidence_indicator(ccm_results)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric(
+            "Celková istota analýzy",
+            f"{overall_conf_pct:.0f}%",
+            help="Percento dimenzií s vysokou istotou"
+        )
+
+    with col2:
+        review_status = "⚠️ Áno" if needs_review else "✅ Nie"
+        st.metric(
+            "Vyžaduje ľudskú kontrolu?",
+            review_status
+        )
+
+    # Intervention points
+    if erfc_result.intervention_points:
+        st.markdown("---")
+        st.markdown("#### 💡 Intervenčné body")
+
+        for ip in erfc_result.intervention_points:
+            type_emoji = {
+                "positive_impact": "✅",
+                "negative_impact": "❌",
+                "missed_opportunity": "⚠️"
+            }
+            type_color = {
+                "positive_impact": COLORS["success"],
+                "negative_impact": COLORS["error"],
+                "missed_opportunity": COLORS["warning"]
+            }
+
+            emoji = type_emoji.get(ip.intervention_type, "•")
+            color = type_color.get(ip.intervention_type, COLORS["text_muted"])
+
+            st.markdown(
+                f"<div style='padding:0.5rem;border-left:3px solid {color};background:rgba(30,41,59,0.5);margin-bottom:0.5rem;border-radius:8px;'>"
+                f"<strong>{emoji} Turn {ip.turn_index}</strong>: {ip.description} "
+                f"<span style='color:{COLORS['text_muted']};font-size:0.85rem;'>(zmena valence: {ip.customer_change:+.2f})</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
 
 
 def render_demo_mode():

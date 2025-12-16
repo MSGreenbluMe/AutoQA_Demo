@@ -647,7 +647,7 @@ def render_advanced_analytics(transcript: dict, metrics: dict):
     """
     st.markdown("### 🚀 Pokročilá analýza (ERFC, SSR, CCM)")
 
-    # Initialize Gemini model (reuse existing GeminiAnalyzer)
+    # Initialize Gemini model (use flash-lite to avoid rate limits)
     try:
         import google.generativeai as genai
         from utils.config import get_api_key
@@ -658,7 +658,8 @@ def render_advanced_analytics(transcript: dict, metrics: dict):
             return
 
         genai.configure(api_key=api_key)
-        gemini_model = genai.GenerativeModel("gemini-2.5-flash")
+        # Use flash-lite to conserve free tier rate limits
+        gemini_model = genai.GenerativeModel("gemini-2.5-flash-lite")
     except Exception as e:
         st.error(f"❌ Chyba inicializácie Gemini: {e}")
         return
